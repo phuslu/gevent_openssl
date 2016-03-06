@@ -46,7 +46,12 @@ class Connection(object):
         return self.__send(self._connection.send, data, flags)
 
     def sendall(self, data, flags=0):
-        return self.__send(self._connection.sendall, data, flags)
+        # Note: all of the types supported by OpenSSL's Connection.sendall,
+        # basestring, memoryview, and buffer, support len(...) and slicing,
+        # so they are safe to use here.
+        while len(data) > 0:
+            res = self.send(data, flags)
+            data = data[res:]
 
     def __send(self, send_method, data, flags=0):
         try:
