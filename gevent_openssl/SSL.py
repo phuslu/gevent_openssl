@@ -46,7 +46,12 @@ class Connection(object):
         return self.__send(self._connection.send, data, flags)
 
     def sendall(self, data, flags=0):
-        return self.__send(self._connection.sendall, data, flags)
+        # Note: all of the types supported by OpenSSL's Connection.sendall,
+        # basestring, memoryview, and buffer, support len(...) and slicing,
+        # so they are safe to use here.
+        while len(data) > 0:
+            res = self.send(data, flags)
+            data = data[res:]
 
     def __send(self, send_method, data, flags=0):
         try:
@@ -74,4 +79,11 @@ class Connection(object):
             raise
 
     def shutdown(self):
-        return self.__iowait(self._connection.shutdown)
+        try:
+            return self.__iowait(self._connection.shutdown)
+        except OpenSSL.SSL.SysCallError as e:
+            # PyOpenSSL will raise an EPIPE if the connection was already
+            # closed, and that's safe to ignore here.
+            if e[1] == 'EPIPE':
+                return True
+            raise
