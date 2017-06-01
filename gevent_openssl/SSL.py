@@ -79,4 +79,11 @@ class Connection(object):
             raise
 
     def shutdown(self):
-        return self.__iowait(self._connection.shutdown)
+        try:
+            return self.__iowait(self._connection.shutdown)
+        except OpenSSL.SSL.SysCallError as e:
+            # PyOpenSSL will raise an EPIPE if the connection was already
+            # closed, and that's safe to ignore here.
+            if e[1] == 'EPIPE':
+                return True
+            raise
