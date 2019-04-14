@@ -73,5 +73,17 @@ class Connection(object):
                 return ''
             raise
 
+    def recv_into(self, buffer, nbytes=None, flags=None):
+        try:
+            return self.__iowait(self._connection.recv_into, buffer, nbytes, flags)
+        except OpenSSL.SSL.ZeroReturnError:
+            return ''
+        except OpenSSL.SSL.SysCallError as e:
+            if e[0] == -1 and 'Unexpected EOF' in e[1]:
+                # errors when reading empty strings are expected and can be
+                # ignored
+                return ''
+            raise
+
     def shutdown(self):
         return self.__iowait(self._connection.shutdown)
